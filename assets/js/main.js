@@ -65,27 +65,111 @@ const contactForm = document.getElementById('contact-form'),
 
 const sendEmail = (e) => {
     e.preventDefault()
-    // serviceID - templateID - #form - publicKey
-    // service_3tlth8e
-    emailjs.sendForm('service_3tlth8e', 'template_zpnu7ln', '#contact-form', 'c6bl79CuxX9-qKsgL')
+    
+    // Check if EmailJS is loaded
+    if (typeof emailjs === 'undefined') {
+        contactMessage.textContent = 'Email service is loading. Please try again in a moment.'
+        contactMessage.style.color = '#ff6b6b'
+        setTimeout(() => {
+            contactMessage.textContent = ''
+        }, 5000)
+        return
+    }
+    
+    // Show loading message
+    contactMessage.textContent = 'Sending message...'
+    contactMessage.style.color = '#4dabf7'
+    
+    // Disable submit button to prevent multiple submissions
+    const submitButton = contactForm.querySelector('button[type="submit"]')
+    const originalButtonText = submitButton.textContent
+    submitButton.disabled = true
+    submitButton.textContent = 'Sending...'
+    
+    // EmailJS configuration
+    // Make sure these match your EmailJS account:
+    // - Service ID: service_v6bnmfg
+    // - Template ID: template_zpnu7ln
+    // - Public Key: qoU0SCBvT1YgUjGs6
+    // - Form field names must match template variables: user_name, user_email, user_project
+    
+    emailjs.sendForm('service_v6bnmfg', 'template_zpnu7ln', '#contact-form', 'qoU0SCBvT1YgUjGs6')
         .then(() => {
-            //Show Sent Massgae
-            contactMessage.textContent = 'Message Sent Sucessfully 📤'
-            //remove msg after 4 second
+            // Show Success Message
+            contactMessage.textContent = 'Message Sent Successfully 📤'
+            contactMessage.style.color = '#51cf66'
+            // Remove msg after 5 seconds
             setTimeout(() => {
                 contactMessage.textContent = ''
-            }, 4000)
-            //clear Input Fields
+            }, 5000)
+            // Clear Input Fields
             contactForm.reset()
-        }, () => {
-            // Show Error Message
-            contactMessage.textContent = 'Message Not Sent(Server Error) 🗑️'
+            // Re-enable submit button
+            submitButton.disabled = false
+            submitButton.textContent = originalButtonText
+        }, (error) => {
+            // Show Error Message with details
+            console.error('EmailJS Error:', error)
+            let errorMsg = ''
+            
+            // Check for account not found errors
+            if (error.text && (error.text.includes('Account not found') || error.text.includes('account not found') || error.text.includes('Service not found'))) {
+                errorMsg = 'EmailJS service not found. Please verify your Service ID (service_v6bnmfg) and Public Key are correct in your EmailJS account.'
+            }
+            // Check for Gmail API connection errors
+            else if (error.text && (error.text.includes('Gmail_API') || error.text.includes('Invalid grant') || error.text.includes('reconnect'))) {
+                errorMsg = 'Gmail account needs reconnection in EmailJS. Please reconnect your Gmail account in the EmailJS dashboard to fix this issue.'
+            } 
+            // Check for other specific error messages
+            else if (error.text) {
+                errorMsg = error.text
+            } 
+            // Handle status codes
+            else if (error.status === 400) {
+                errorMsg = 'Bad request. Please check that all required fields are filled correctly.'
+            } else if (error.status === 401) {
+                errorMsg = 'Authentication failed. Invalid API key or service configuration.'
+            } else if (error.status === 403) {
+                errorMsg = 'Access forbidden. Please check EmailJS service permissions.'
+            } else if (error.status === 404) {
+                errorMsg = 'Service or template not found. Please verify EmailJS setup.'
+            } else if (error.status === 500) {
+                errorMsg = 'Server error. The email service is temporarily unavailable. Please try again later.'
+            } else if (error.status) {
+                errorMsg = `Error occurred (Status: ${error.status}). Please try again or contact support.`
+            } else {
+                errorMsg = 'Failed to send message. Please try again later or contact directly via email.'
+            }
+            
+            contactMessage.textContent = errorMsg
+            contactMessage.style.color = '#ff6b6b'
             setTimeout(() => {
                 contactMessage.textContent = ''
-            }, 4000)
+            }, 8000)
+            // Re-enable submit button
+            submitButton.disabled = false
+            submitButton.textContent = originalButtonText
         })
 }
-contactForm.addEventListener('submit', sendEmail)
+
+// Set up form when DOM is ready
+if (contactForm) {
+    // Wait for EmailJS to be fully loaded
+    const checkEmailJS = setInterval(() => {
+        if (typeof emailjs !== 'undefined') {
+            clearInterval(checkEmailJS)
+            contactForm.addEventListener('submit', sendEmail)
+        }
+    }, 100)
+    
+    // Timeout after 5 seconds
+    setTimeout(() => {
+        clearInterval(checkEmailJS)
+        if (typeof emailjs === 'undefined') {
+            console.error('EmailJS failed to load')
+        }
+    }, 5000)
+}
 
 // Show Scroll Up
 const scrollUp = () => {
